@@ -2,8 +2,6 @@ from sqlalchemy import DateTime, ForeignKey, column, create_engine,Integer,Colum
 from base import Base
 
 
-    
-
 class Customer(Base):
     __tablename__='customer'
     cus_id=Column(String(10),primary_key=True)

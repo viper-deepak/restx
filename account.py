@@ -2,8 +2,7 @@ from datetime import date
 import datetime
 import uuid
 from flask_restx import Api, Resource,fields
-from flask import Flask, request, flash, session, url_for, redirect, render_template
-from sqlalchemy import Integer  
+from flask import Flask, request, session  
 from base import Base,engine,Session
 from accountdb import Account,Customer,Transaction
 
@@ -14,8 +13,6 @@ app.secret_key = "a1b2c"
 
 Base.metadata.create_all(engine)
 session=Session()  
-
-
 
 customer_model=api.model(
     'Customer',
@@ -128,9 +125,6 @@ class Trans(Resource):
         return trans
 
 
-
-
-
 @api.route('/statement/<string:id>')
 class Statement(Resource):
     @api.marshal_list_with(transaction_model,code=200,envelope="statement")
@@ -138,9 +132,6 @@ class Statement(Resource):
         ''' Account Statement '''
         statement=session.query(Transaction).filter(Transaction.acc_no==id).all()
         return statement
-
-
-
 
 
             
