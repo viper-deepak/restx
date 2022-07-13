@@ -94,36 +94,26 @@ class StoreList(Resource):
         return marshal(new_store, _store_list), 201
 
 
-@api.route('/store/<name>')
-class Store(Resource):
+
+
+@api.route('/store/<int:store_id>')
+class StoreItemList(Resource):
     @api.response(404, 'Store not found.')
     @api.marshal_with(_store_list)
-    def get(self, name):
+    def get(self, store_id):
         """get a store"""
-        store = session.query(StoreModel).filter(StoreModel.name==name).first().items.all()
+        store = session.query(StoreModel).get(store_id)
         if store:
             return store
         api.abort(404)
         return
 
-    def delete(self, name):
+    def delete(self, store_id):
         """delete store"""
-        store_to_delete=session.query(StoreModel).filter(StoreModel.name==name).first()
+        store_to_delete=session.query(StoreModel).get(store_id)
         session.delete(store_to_delete)
         session.commit()
         return {'message': 'Store deleted'}
-
-
-@api.route('/store/<int:store_id>')
-class StoreItemList(Resource):
-    @api.marshal_list_with(_item_list_by_store)
-    def get(self,store_id):
-        """Items in store"""
-        items=session.query(ItemModel).filter(ItemModel.store_id==store_id).all()
-        if not items:
-            api.abort(404)
-            return
-        return items
 
 
 @api.route('/user/register')
@@ -212,6 +202,7 @@ class Item(Resource):
         name = data.get('name')
         price = data.get('price')
         item_to_update=session.query(ItemModel).get(item_id)
+        item_to_update.name = name
         item_to_update.price = price
         session.commit()
         return item_to_update

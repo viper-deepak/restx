@@ -3,20 +3,13 @@ from sqlalchemy.orm import relationship
 from base import Base
 
 
-store_item_association=Table(
-    'stores_items',Base.metadata,
-    Column('store_id',Integer,ForeignKey('stores.id')),
-    Column('items_id',Integer,ForeignKey('items.id'))
-    )
-
 class StoreModel(Base):
     __tablename__ = 'stores'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(80))
 
-    items = relationship('ItemModel', secondary=store_item_association)
-
+    items = relationship("ItemModel", order_by = 'ItemModel.id', back_populates = "store")
     def __init__(self, name):
         self.name = name
 
@@ -47,3 +40,4 @@ class UserModel(Base):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
