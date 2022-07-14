@@ -2,7 +2,8 @@ from flask_restx.marshalling import marshal
 from flask import Flask,request,session
 from flask_restx import Api, Resource,fields
 from base import Base,engine,Session
-from model import StoreModel,ItemModel,UserModel
+from model import OrderModel, StoreModel,ItemModel,UserModel
+import datetime
 
 app=Flask(__name__)
 api=Api(app,doc='/',title="A Store API",description="A REST API for Store")
@@ -61,10 +62,19 @@ _item_list = api.model('_item_list', {
     'price': fields.Float(),
     'store_id': fields.Integer(),
 })
-_item_list_by_store = api.model('_item_list', {
+
+_order_create = api.model('_order_create', {
+    'user_id': fields.Integer(),
+    'item_id': fields.Integer(),
+    'store_id' : fields.Integer(),
+    'order_date' : fields.DateTime(),
+})
+_order_list = api.model('_order_list', {
     'id': fields.Integer(),
-    'name': fields.String(),
-    'price': fields.Float(),
+    'user_id': fields.Integer(),
+    'item_id': fields.Integer(),
+    'store_id' : fields.Integer(),
+    'order_date' : fields.DateTime(),
 })
 
 
@@ -235,6 +245,34 @@ class ItemList(Resource):
         except:
             return {"message": "An error occurred inserting the item."}, 500
         return marshal(item, _item_list), 201
+
+
+@api.route('/order')
+class Order(Resource):
+    @api.marshal_list_with(_order_list)
+    def get(self):
+        """list all orders"""
+        all_orders = session.query(OrderModel.id,ItemModel.name,ItemModel.price).filter(OrderModel.item_id==ItemModel.id).all()
+        if not all_orders:
+            api.abort(404)
+            return
+        return all_orders, 200
+
+    @api.expect(_order_create)
+    def post(self):
+        """place a order"""
+        data = request.get_json()
+        user_id = data.get('user_id')
+        item_id = data.get('item_id')
+        store_id = data.get('store_id')
+        order_date=datetime.datetime.now()
+        order = OrderModel(user_id,item_id,store_id,order_date)
+        try:
+            session.add(order)
+            session.commit()
+        except:
+            return {"message": "An error occurred while placing an order."}, 500
+        return marshal(order, _order_list), 201
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
-from sqlalchemy import Integer, String,Column,Float,ForeignKey,Table
+from xmlrpc.client import DateTime
+from sqlalchemy import Integer, String,Column,Float,ForeignKey,Table,DateTime
 from sqlalchemy.orm import relationship
 from base import Base
+
 
 
 class StoreModel(Base):
@@ -10,6 +12,7 @@ class StoreModel(Base):
     name = Column(String(80))
 
     items = relationship("ItemModel", order_by = 'ItemModel.id', back_populates = "store")
+
     def __init__(self, name):
         self.name = name
 
@@ -37,7 +40,26 @@ class UserModel(Base):
     username = Column(String(80))
     password = Column(String(80))
 
+    orders = relationship("OrderModel", order_by = 'OrderModel.id', back_populates = "user")
+
     def __init__(self, username, password):
         self.username = username
         self.password = password
 
+
+class OrderModel(Base):
+    __tablename__ = 'orders'
+
+    id = Column(Integer,primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    item_id = Column(Integer, ForeignKey('items.id'))
+    store_id = Column(Integer, ForeignKey('stores.id'))
+    order_date =  Column(DateTime)
+
+    user = relationship('UserModel',back_populates="orders")
+
+    def __init__(self,user_id,item_id,store_id,order_date):
+        self.user_id = user_id
+        self.item_id = item_id
+        self.store_id = store_id
+        self.order_date = order_date
