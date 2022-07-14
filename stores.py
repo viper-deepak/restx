@@ -32,13 +32,29 @@ _store_list = api.model('_store_list', {
         readonly=True,
         description="The user identifier"
     ),
-    'name': fields.String(
+    'sname': fields.String(
         required=True,
         description="The store name"
     ),
     'items': fields.List(
         fields.Nested(_item_list),
         description="The store's item"
+    ),
+})
+
+_user_order_list = api.model('_user_order_list',{
+    'id': fields.Integer(),
+    'name': fields.String(),
+    'price': fields.Float(),
+    'sname': fields.String(),
+    'order_date' : fields.DateTime(),
+})
+_user_order = api.model('_user_order',{
+    'id': fields.Integer(readonly=True, description="The user identifier"),
+    'username': fields.String(required=True, description="The user name"),
+    'orders': fields.List(
+        fields.Nested(_user_order_list),
+        description="The user's order"
     ),
 })
 
@@ -94,9 +110,9 @@ class StoreList(Resource):
     def post(self):
         """create a store"""
         data=request.get_json()
-        name =data.get('name')
+        sname =data.get('sname')
         try:
-            new_store=StoreModel(name)
+            new_store=StoreModel(sname)
             session.add(new_store)
             session.commit()
         except:
@@ -185,6 +201,20 @@ class User(Resource):
         return {'message': 'User deleted.'}, 200
 
 
+@api.route('/vieworder/<int:user_id>')
+@api.param("user_id", "The user identifier")
+@api.response(404, "User,s order not found")
+class UserOrderView(Resource):
+    @api.marshal_list_with(_user_order_list)
+    def get(self,user_id):
+        """get a user's order"""
+        user = session.query(OrderModel.id,ItemModel.name,ItemModel.price,StoreModel.sname,OrderModel.order_date).filter(OrderModel.item_id==ItemModel.id , ItemModel.store_id==StoreModel.id , OrderModel.user_id==user_id).all()
+        if not user:
+            api.abort(404, "User not found")
+            return
+        return user, 200
+
+
 @api.route('/item/<int:item_id>')
 class Item(Resource):
     @api.marshal_with(_item_list)
@@ -252,7 +282,7 @@ class Order(Resource):
     @api.marshal_list_with(_order_list)
     def get(self):
         """list all orders"""
-        all_orders = session.query(OrderModel.id,ItemModel.name,ItemModel.price).filter(OrderModel.item_id==ItemModel.id).all()
+        all_orders = session.query(OrderModel).all()
         if not all_orders:
             api.abort(404)
             return

@@ -9,12 +9,12 @@ class StoreModel(Base):
     __tablename__ = 'stores'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(80))
+    sname = Column(String(80))
 
     items = relationship("ItemModel", order_by = 'ItemModel.id', back_populates = "store")
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, sname):
+        self.sname = sname
 
 
 class ItemModel(Base):
