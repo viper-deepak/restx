@@ -22,8 +22,6 @@ app=Flask(__name__)
 api=Api(app,doc='/',title="A Store API",authorizations=authorizations,description="A REST API for Store")
 
 app.config["JWT_SECRET_KEY"] = "super-secret"
-
-app.secret_key = "a1b2c"
 Base.metadata.create_all(engine)
 session=Session() 
 
@@ -136,7 +134,6 @@ class StoreList(Resource):
         return marshal(new_store, _store_list), 201
 
 
-
 @api.route('/store/<int:store_id>')
 class StoreItemList(Resource):
     @api.response(404, 'Store not found.')
@@ -161,7 +158,6 @@ class StoreItemList(Resource):
 @api.response(201, "User created successfully")
 @api.response(400, "that username already exists.")
 class UserRegister(Resource):
-    @api.doc("register_users")
     @api.doc("register user")
     @api.expect(_user_create)
     @api.marshal_with(_user_list)
@@ -181,6 +177,7 @@ class UserRegister(Resource):
 
 @api.route('/user')
 class UserList(Resource):
+    @jwt_required()
     @api.doc("list_users")
     @api.doc("list_users")
     @api.marshal_list_with(_user_list, envelope='data')
@@ -197,6 +194,7 @@ class UserList(Resource):
 @api.param("user_id", "The user identifier")
 @api.response(404, "User not found")
 class User(Resource):
+    @jwt_required()
     @api.marshal_list_with(_user_list)
     def get(self, user_id):
         """get a user"""
@@ -206,6 +204,7 @@ class User(Resource):
             return
         return user, 200
 
+    @jwt_required()
     @api.response(200, "User deleted.")
     def delete(self, user_id):
         """Delete user"""
@@ -222,6 +221,7 @@ class User(Resource):
 @api.param("user_id", "The user identifier")
 @api.response(404, "User,s order not found")
 class UserOrderView(Resource):
+    @jwt_required()
     @api.marshal_list_with(_user_order)
     def get(self, user_id):
         """get a user's order"""
@@ -275,7 +275,6 @@ class TokenRefresh(Resource):
         current_user = get_jwt()
         new_token = create_access_token(identity=current_user, fresh=False)
         return {'access_token': new_token}
-
 
 
 @api.route('/item/<int:item_id>')

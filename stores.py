@@ -1,14 +1,22 @@
 from flask_restx.marshalling import marshal
-from flask import Flask,request,session
+from flask import Flask, jsonify,request,session
 from flask_restx import Api, Resource,fields
 from base import Base,engine,Session
 from model import OrderModel, StoreModel,ItemModel,UserModel
 import datetime
+from werkzeug.security import safe_str_cmp
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
 
 app=Flask(__name__)
 api=Api(app,doc='/',title="A Store API",description="A REST API for Store")
 
 app.secret_key = "a1b2c"
+app.config['JWT_TOKEN_LOCATION'] = ['headers', 'query_string']
+app.config["JWT_SECRET_KEY"] = "004f2af45d3a4e161a7dd2d17fdae47f" 
+jwt = JWTManager(app)
 Base.metadata.create_all(engine)
 session=Session() 
 
@@ -62,7 +70,7 @@ _user_list = api.model('_user_list', {
     'id': fields.Integer(readonly=True, description="The user identifier"),
     'username': fields.String(required=True, description="The user name"),
 })
-_user_create = api.model('_user_create', {
+_user = api.model('_user', {
     'username': fields.String(required=True, description="The username"),
     'password': fields.String(required=True, description="The user password"),
 })
@@ -147,7 +155,7 @@ class StoreItemList(Resource):
 @api.response(400, "that username already exists.")
 class UserRegister(Resource):
     @api.doc("register user")
-    @api.expect(_user_create)
+    @api.expect(_user)
     @api.marshal_with(_user_list)
     def post(self):
         """register a user"""
@@ -163,8 +171,26 @@ class UserRegister(Resource):
         return user, 201
 
 
+@api.route('/login')
+@api.response(401, "Invalid Credentials!")
+@api.response(200, "Success")
+class UserLogin(Resource):
+    @api.expect(_user)
+    def post(self):
+        """user login"""
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        user = session.query(UserModel).filter(UserModel.username==username).first()
+        if user and safe_str_cmp(user.password,password ):
+            access_token = create_access_token(identity=user.id, fresh=True)
+            return jsonify(access_token=access_token)
+        return {"message": "Invalid Credentials!"}, 401        
+
+
 @api.route('/user')
 class UserList(Resource):
+    @jwt_required()
     @api.doc("list_users")
     @api.marshal_list_with(_user_list, envelope='data')
     def get(self):
@@ -180,6 +206,7 @@ class UserList(Resource):
 @api.param("user_id", "The user identifier")
 @api.response(404, "User not found")
 class User(Resource):
+    @jwt_required()
     @api.marshal_list_with(_user_list)
     def get(self, user_id):
         """get a user"""
@@ -189,6 +216,7 @@ class User(Resource):
             return
         return user, 200
 
+    @jwt_required()
     @api.response(200, "User deleted.")
     def delete(self, user_id):
         """Delete user"""
@@ -205,6 +233,7 @@ class User(Resource):
 @api.param("user_id", "The user identifier")
 @api.response(404, "User,s order not found")
 class UserOrderView(Resource):
+    @jwt_required()
     @api.marshal_list_with(_user_order_list)
     def get(self,user_id):
         """get a user's order"""
@@ -279,6 +308,7 @@ class ItemList(Resource):
 
 @api.route('/order')
 class Order(Resource):
+    @jwt_required()
     @api.marshal_list_with(_order_list)
     def get(self):
         """list all orders"""
@@ -288,6 +318,7 @@ class Order(Resource):
             return
         return all_orders, 200
 
+    @jwt_required()
     @api.expect(_order_create)
     def post(self):
         """place a order"""
@@ -303,6 +334,13 @@ class Order(Resource):
         except:
             return {"message": "An error occurred while placing an order."}, 500
         return marshal(order, _order_list), 201
+
+
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
 
 
 if __name__ == "__main__":
